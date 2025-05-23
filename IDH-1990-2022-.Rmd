@@ -1,5 +1,5 @@
 ---
-title: "Qualidade de vida no Brasil (1990-2023)"
+title: "Qualidade de vida no Brasil (1990-2022)"
 author: "Diego Prata Melo"
 output: 
   github_document
@@ -14,7 +14,7 @@ knitr::opts_chunk$set(echo = TRUE,
 
 # Introdução
 
-Esta peça é o trabalho de conclusão do curso Ciência de Dados com R do IBPAD. Seu propósito é apresentar a evolução dos indíces de qualidade de vida no Brasil no período entre 1990 e 2023. Os dados apresentados aqui corroboram com o argumento de Marta Arretche de que a Constituição de 1988 promoveu uma transição democrática bem-sucedida, pois promoveu fortes mudanças nas políticas sociais responsáveis por incluir setores anteriormente excluídos. "Esse mecanismo não apenas reduziu desigualdades, mas também operou como um contrapeso aos efeitos da crise econômica que atravessamos" [^1].
+Esta peça é o trabalho de conclusão do curso Ciência de Dados com R do IBPAD. Seu propósito é apresentar a evolução dos indíces de qualidade de vida no Brasil no período entre 1990 e 2022. Os dados apresentados aqui corroboram com o argumento de Marta Arretche de que a Constituição de 1988 promoveu uma transição democrática bem-sucedida, pois promoveu fortes mudanças nas políticas sociais responsáveis por incluir setores anteriormente excluídos. "Esse mecanismo não apenas reduziu desigualdades, mas também operou como um contrapeso aos efeitos da crise econômica que atravessamos" [^1].
 
 [^1]: ARRETCHE, Marta. Trinta anos da Constituição de 1988: razões para comemorar? Novos estudos CEBRAP, São Paulo, v.37 nº 03, pp. 395-414, Set.– Dez. 2018a. Disponível em: <http://dx.doi.org/10.25091/S01013300201800030001>.
 
@@ -73,7 +73,7 @@ library(WDI)
 Caso prefira acessar os dados diretamente do site, clique na imagem abaixo:
 
 ::: {style="text-align: center;"}
-<a href="https://data.worldbank.org/indicator/SI.POV.GINI?end=2023&start=1963&view=chart"> <img src="https://data.worldbank.org/assets/images/logo-wb-header-en.svg"/> </a>
+<a href="https://data.worldbank.org/indicator/SI.POV.GINI?end=2022&start=1963&view=chart"> <img src="https://data.worldbank.org/assets/images/logo-wb-header-en.svg"/> </a>
 :::
 
 ## Tratamento dos dados
@@ -84,10 +84,11 @@ Após baixar os dados, faz-se necessário realizar seu tratamento. No entanto, p
 
 # IDH
 idh_brasil <- HDR2025 %>% 
-  select(-c(iso3,hdicode, region,hdi_rank_2023,"le_1990":"pop_total_2023")) %>% 
+  select(-c(iso3,hdicode, region,hdi_rank_2023, hdi_2023, 
+            "le_1990":"pop_total_2023")) %>% 
   pivot_longer(
     -country, names_to = "Ano", values_to = "IDH") %>% 
-  filter(country %in% c("Brazil")) %>% 
+  filter(country == "Brazil", Ano != "hdi_2023") %>% 
   mutate(country = recode(country, "Brazil" = "Brasil"))
 
 idh_brasil$Ano <- parse_number(idh_brasil$Ano)
@@ -129,7 +130,7 @@ HDR_Gini_longer <- HDR_Gini %>%
 
 # IDHAD
 idhad_brasil <- HDR2025 %>%
-  select(c(country,"ihdi_2010":"ihdi_2023")) %>% 
+  select(c(country,"ihdi_2010":"ihdi_2022")) %>% 
   pivot_longer(
     -country, names_to = "Ano", values_to = "IDHAD"
   ) %>%
@@ -311,7 +312,7 @@ idh_brasil %>%
             ymax = Inf,
             alpha = 0.008, fill = "darkred") +
   geom_rect(xmin = 2019,
-            xmax = 2023,
+            xmax = 2022,
             ymin = -Inf,
             ymax = Inf,
             alpha = 0.008, fill = "green") +
@@ -322,13 +323,13 @@ idh_brasil %>%
   annotate("text", x = 2013, y = 0.753, label = "Dilma", color = "darkred") +
   annotate("text", x = 2017, y = 0.753, label = "Temer") +
   annotate("text", x = 2020, y = 0.740, label = "Bolsonaro", color = "darkgreen") +
-  labs(title = "IDH - Brasil (1990-2023)",
+  labs(title = "IDH - Brasil (1990-2022)",
        caption = "Fonte: PNUD. Elaboração: Dados sistematizados pelo autor. R package: ggplot2") +
    theme(
     plot.title = element_text(hjust = 0.5, size = 16, face = "bold"))
 ```
 
-O coeficiente de Gini brasileiro, por sua vez, passa por algumas oscilações, passando, inclusive, por algum retorno à desigualdade. Um caso curioso é o do Governo Bolsonaro, no qual ocorreu uma queda vertiginosa em 2020 e um forte retorno em 2021 para voltar a cair em 2022. Tais efeitos de queda pode ter relação com as políticas de distribuição de renda durante o período de pandemia e no ano eleitoral.
+O coeficiente de Gini brasileiro, por sua vez, passa por algumas oscilações, passando, inclusive, por algum retorno à desigualdade. Um caso curioso é o do Governo Bolsonaro, no qual ocorreu uma queda vertiginosa em 2020, um forte retorno em 2021 e um novo declínio em 2022. Tais efeitos de queda podem ter relação com as políticas de distribuição de renda que ocorreram durante o período de pandemia e no ano eleitoral.
 
 ```{r echo = FALSE, fig.align = 'center'}
 gini_brasil %>%
@@ -356,7 +357,7 @@ gini_brasil %>%
             ymax = Inf,
             alpha = 0.008, fill = "darkred") +
   geom_rect(xmin = 2019,
-            xmax = 2023,
+            xmax = 2022,
             ymin = -Inf,
             ymax = Inf,
             alpha = 0.008, fill = "green") +
@@ -402,7 +403,7 @@ g1 <- idh_brasil %>%
             ymax = Inf,
             alpha = 0.008, fill = "darkred") +
   geom_rect(xmin = 2019,
-            xmax = 2023,
+            xmax = 2022,
             ymin = -Inf,
             ymax = Inf,
             alpha = 0.008, fill = "green") +
@@ -411,9 +412,9 @@ g1 <- idh_brasil %>%
   annotate("text", x = 1998, y = 0.718, label = "FHC", color = "blue") +
   annotate("text", x = 2007, y = 0.753, label = "Lula", color = "red") +
   annotate("text", x = 2013, y = 0.730, label = "Dilma", color = "darkred") +
-  annotate("text", x = 2017, y = 0.799, label = "Temer") +
+  annotate("text", x = 2017, y = 0.801, label = "Temer") +
   annotate("text", x = 2020, y = 0.753, label = "Bolsonaro", color = "darkgreen") +
-  labs(title = "IDH - Brasil (1990-2023)") +
+  labs(title = "IDH - Brasil (1990-2022)") +
    theme(
     plot.title = element_text(hjust = 0.5, size = 12, face = "bold"))
 
@@ -443,17 +444,17 @@ g2 <- gini_brasil %>%
             ymax = Inf,
             alpha = 0.008, fill = "darkred") +
   geom_rect(xmin = 2019,
-            xmax = 2023,
+            xmax = 2022,
             ymin = -Inf,
             ymax = Inf,
             alpha = 0.008, fill = "green") +
-  annotate("text", x = 1992, y = 51, label = "Collor", color = "darkgreen") +
-  annotate("text", x = 1994, y = 54, label = "Itamar") +
+  annotate("text", x = 1992, y = 53, label = "Collor", color = "darkgreen") +
+  annotate("text", x = 1995, y = 54, label = "Itamar") +
   annotate("text", x = 1998, y = 58, label = "FHC", color = "blue") +
-  annotate("text", x = 2007, y = 58, label = "Lula", color = "red") +
+  annotate("text", x = 2007, y = 57, label = "Lula", color = "red") +
   annotate("text", x = 2013, y = 56, label = "Dilma", color = "darkred") +
-  annotate("text", x = 2017, y = 58, label = "Temer") +
-  annotate("text", x = 2020, y = 55, label = "Bolsonaro", color = "darkgreen") +
+  annotate("text", x = 2017, y = 55, label = "Temer") +
+  annotate("text", x = 2020, y = 54, label = "Bolsonaro", color = "darkgreen") +
   labs(title = "Gini - Brasil (1990-2022)",
        caption = "Fonte: Banco Mundial. Elaboração: Dados sistematizados pelo autor. R package: ggplot2") +
    theme(
@@ -463,7 +464,7 @@ g2 <- gini_brasil %>%
 g1+g2
 ```
 
-No entanto, é importante trazer os dados do Índice de Desenvolvimento Humano Ajustado à Desigualdade (IDHAD), que possui dados a partir de 2010. Comparando com o IDH, observe que ao incluir o elemento da desigualdade (nas três dimensões que compõem o IDH, ou seja, saúde, educação e renda), o desempenho do Brasil em termos de qualidade de vida cai.
+No entanto, o IDH pode não capturar a desigualdade na distribuição dos três atibutos que compõem o indicador (saúde, educação e renda per capta). Assim, é importante trazer os dados do Índice de Desenvolvimento Humano Ajustado à Desigualdade (IDHAD), que possui dados a partir de 2010. Comparando com o IDH, observe que, ao incluir o elemento da desigualdade, o desempenho do Brasil em melhorar a qualidade de vida cai.
 
 ```{r echo=FALSE, fig.align='center'}
 
@@ -477,7 +478,7 @@ full_join(idh_brasil, idhad_brasil, by = c("country", "Ano")) %>%
   geom_line(size = 1) +
   labs(color = "Variáveis",
        linetypes = "Variáveis",
-       title = "IDH e IDHAH - Brasil (2010-2023)",
+       title = "IDH e IDHAH - Brasil (2010-2022)",
        caption = "Fonte: PNUD. Elaboração: Dados sistematizados pelo autor. R package: ggplot2") +
   scale_color_manual(
     values = c("IDH" = "blue", "IDHAD" = "darkgreen")
@@ -487,17 +488,18 @@ full_join(idh_brasil, idhad_brasil, by = c("country", "Ano")) %>%
 
 ```
 
-Assim, vimos que o Brasil, desde 1990, passou por um constante crescimento do IDH. Isso se deve, entre outros fatores, às políticas sociais da COnstituição de 1988. Já o Gini mostrou oscilações no decorrer do tempo (dependendo das ações de cada governo), embora em uma tendência geral de queda. Por fim, vimos pelo IDHAD que a qualidade de vida do Brasil realmente melhorou, mas, ao acrescentar o fator da desigualdade, esse desempenho se mostra mais tímido e, inclusive, com momentos de oscilação negativa.
+# COnclusão
+Assim, vimos que o Brasil, desde 1990, passou por um constante crescimento do IDH. Isso se deve, entre outros fatores, às políticas sociais da Constituição de 1988. Já o Gini mostrou oscilações no decorrer do tempo (dependendo das ações de cada governo), embora em uma tendência geral de queda. Por fim, vimos pelo IDHAD que a qualidade de vida do Brasil realmente melhorou, embora esse desempenho tenha se revelado mais tímido (contando, inclusive, com momentos de oscilação negativa) quando os valores médios em saúde, educação e renda são descontados de acordo com o nível de desigualdade do país.
 
 # Apêndice
 
-Para o presente trabalho, nós realizamos o tratamento dos dados de forma a gerar 4 bases: 1) os dados do IDH filtrados e manipulados; 2) os dados do Gini filtrados e manipulados; 3) os dados do IDH e do Gini unificados; 4) os mesmos dados da base 3 em formato "longer"; 5) os dados do IDHAD.
+Para o presente trabalho, realizei o tratamento dos dados de forma a gerar 4 bases: 1) os dados do IDH filtrados e manipulados; 2) os dados do Gini filtrados e manipulados; 3) os dados do IDH e do Gini unificados; 4) os mesmos dados da base 3 em formato "longer"; 5) os dados do IDHAD.
 
 ```{r eval = FALSE}
 
 # IDH
 idh_brasil <- HDR2025 %>% 
-  select(-c(iso3,hdicode, region,hdi_rank_2023,"le_1990":"pop_total_2023")) %>% 
+  select(-c(iso3,hdicode, region,hdi_rank_2022,"le_1990":"pop_total_2022")) %>% 
   pivot_longer(
     -country, names_to = "Ano", values_to = "IDH") %>% 
   filter(country %in% c("Brazil")) %>% 
@@ -534,7 +536,7 @@ HDR_Gini_longer <- HDR_Gini %>%
 
 # IDHAD
 idhad_brasil <- HDR2025 %>%
-  select(c(country,"ihdi_2010":"ihdi_2023")) %>% 
+  select(c(country,"ihdi_2010":"ihdi_2022")) %>% 
   pivot_longer(
     -country, names_to = "Ano", values_to = "IDHAD"
   ) %>%
