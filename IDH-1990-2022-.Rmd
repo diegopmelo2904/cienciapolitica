@@ -499,10 +499,11 @@ Para o presente trabalho, realizei o tratamento dos dados de forma a gerar 4 bas
 
 # IDH
 idh_brasil <- HDR2025 %>% 
-  select(-c(iso3,hdicode, region,hdi_rank_2022,"le_1990":"pop_total_2022")) %>% 
+  select(-c(iso3,hdicode, region,hdi_rank_2023, hdi_2023, 
+            "le_1990":"pop_total_2023")) %>% 
   pivot_longer(
     -country, names_to = "Ano", values_to = "IDH") %>% 
-  filter(country %in% c("Brazil")) %>% 
+  filter(country == "Brazil", Ano != "hdi_2023") %>% 
   mutate(country = recode(country, "Brazil" = "Brasil"))
 
 idh_brasil$Ano <- parse_number(idh_brasil$Ano)
@@ -526,9 +527,17 @@ gini_brasil$Ano <- as.numeric(gini_brasil$Ano)
 
 gini_brasil$Gini <- str_remove(gini_brasil$Gini, " - .*") %>% 
   as.numeric(gini_brasil$Gini)
+  
+
+
+colnames(gini_brasil)
+glimpse(gini_brasil)
 
 # Unificando
 HDR_Gini <- full_join(idh_brasil, gini_brasil, by = c("country", "Ano"))
+glimpse(HDR_Gini)
+
+names(HDR_Gini)
 
 # Unificado + longer
 HDR_Gini_longer <- HDR_Gini %>% 
