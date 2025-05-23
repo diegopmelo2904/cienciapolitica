@@ -155,19 +155,24 @@ Apesar das turbulências que marcaram o começo da redemocratização, houve ava
 
 Já o Gini do país, nesse período entre 1990 e 1993, passou por oscilações, caindo em 1992 e subindo novamente em 1993.
 
-```{r echo = FALSE}
-HDR_Gini %>% select(-country) %>% 
-  filter(Ano >= 1990, Ano <= 1993) %>% gt() %>%
-  tab_options(column_labels.border.top.color = 
-                "black", column_labels.border.top.width = 
-                px(3)) %>% 
-  cols_align(align = "center") %>% 
-  tab_header("IDH e Gini do Brasil (1990-1993") %>% 
-  tab_style(style = list(
-    cell_fill(color = "blue"),
-    cell_text(color = "white")
-  ),
-  locations = cells_title(groups = "title"))
+```{r echo = FALSE, fig.align='center'}
+# HDR_Gini %>% select(-country) %>% 
+#   filter(Ano >= 1990, Ano <= 1993) %>% gt() %>%
+#   tab_options(column_labels.border.top.color = 
+#                 "black", column_labels.border.top.width = 
+#                 px(3)) %>% 
+#   cols_align(align = "center") %>% 
+#   tab_header("IDH e Gini do Brasil (1990-1993") %>% 
+#   tab_style(style = list(
+#     cell_fill(color = "blue"),
+#     cell_text(color = "white")
+#   ),
+#   locations = cells_title(groups = "title"))
+
+HDR_Gini %>%
+  filter(Ano >= 1990, Ano <= 1993) %>%
+  select(-country) %>%
+  knitr::kable()
 ```
 
 A partir de 1994, parecia que o sistema político brasileiro conseguiria se estabilizar. As coalizões políticas lideradas pelo Partido dos Trabalhadores (PT) e pelo Partido da Social Democracia Brasileira (PSDB) protagonizaram e estabilizaram a disputa política dentro dos limites das “grades de proteção” da democracia [^5].
