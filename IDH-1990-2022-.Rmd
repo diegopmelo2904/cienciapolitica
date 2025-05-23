@@ -488,7 +488,7 @@ full_join(idh_brasil, idhad_brasil, by = c("country", "Ano")) %>%
 
 ```
 
-# COnclusão
+# Conclusão
 Assim, vimos que o Brasil, desde 1990, passou por um constante crescimento do IDH. Isso se deve, entre outros fatores, às políticas sociais da Constituição de 1988. Já o Gini mostrou oscilações no decorrer do tempo (dependendo das ações de cada governo), embora em uma tendência geral de queda. Por fim, vimos pelo IDHAD que a qualidade de vida do Brasil realmente melhorou, embora esse desempenho tenha se revelado mais tímido (contando, inclusive, com momentos de oscilação negativa) quando os valores médios em saúde, educação e renda são descontados de acordo com o nível de desigualdade do país.
 
 # Apêndice
