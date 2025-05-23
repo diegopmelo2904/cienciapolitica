@@ -1,0 +1,544 @@
+---
+title: "Qualidade de vida no Brasil (1990-2023)"
+author: "Diego Prata Melo"
+output: 
+  github_document
+date: "`r Sys.Date()`"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+	message = FALSE,
+	warning = FALSE)
+```
+
+# Introdução
+
+Esta peça é o trabalho de conclusão do curso Ciência de Dados com R do IBPAD. Seu propósito é apresentar a evolução dos indíces de qualidade de vida no Brasil no período entre 1990 e 2023. Os dados apresentados aqui corroboram com o argumento de Marta Arretche de que a Constituição de 1988 promoveu uma transição democrática bem-sucedida, pois promoveu fortes mudanças nas políticas sociais responsáveis por incluir setores anteriormente excluídos. "Esse mecanismo não apenas reduziu desigualdades, mas também operou como um contrapeso aos efeitos da crise econômica que atravessamos" [^1].
+
+[^1]: ARRETCHE, Marta. Trinta anos da Constituição de 1988: razões para comemorar? Novos estudos CEBRAP, São Paulo, v.37 nº 03, pp. 395-414, Set.– Dez. 2018a. Disponível em: <http://dx.doi.org/10.25091/S01013300201800030001>.
+
+No tocante ao bem-estar socioeconômico, foram usados indicadores que tratam da desigualdade e da qualidade de vida: o Coeficiente de Gini e o Índice de Desenvolvimento Humano (IDH) [^2], respectivamente. Também foi usado o recentemente elaborado Índice de Desenvolvimento Humano Ajustado à Desigualdade (IDHAD), que considera as três dimensões do IDH à luz da desigualdade. Esse indicador possui dados a partir de 2010.
+
+[^2]: Usado para medir a desigualdade social, Coeficiente de Gini é medido em uma escala de 0 a 100 pelo Banco Mundial, com 0 representando uma perfeita igualdade e 100, uma desigualdade completa. O IDH, por sua vez, mede o desenvolvimento de um país ou região com base em três dimensões: saúde, educação e renda (PIB) per capita.
+
+As informações foram retiradas das plataformas do Programa das Nações Unidas para o Desenvolvimento (PNUD) - no caso do IDH e do IDHAD - e do Banco Mundial (World Bank) - no caso do Gini.
+
+# Operacionalização
+
+## Importando pacotes
+
+O presente relatório foi escrito com RMarkdown. Sendo assim, para realizar as análises, precisamos carregar os pacotes que serão usados na sessão.
+
+```{r pacotes}
+library(tidyverse)
+library(readr)
+library(data.table)
+library(flextable)
+library(gt)
+library(WDI)
+library(patchwork)
+library(shinyjs)
+library(scales)
+
+options(scipen = 999)
+```
+
+## Importando dados
+
+Agora que temos nossos dados devidamente importados, podemos carregar os dados que usaremos em nossa apresentação. No caso dos dados do PNUD, o arquivo foi baixado do site da organização, que pode ser acessado clicando na imagem abaixo:
+
+::: {style="text-align: center;"}
+<a href="https://hdr.undp.org/data-center/documentation-and-downloads"> <img src="C:/Users/DIEGO PRATA/OneDrive/Área de Trabalho/CURSOS/MESTRADO DOUTORADO/DISSERTAÇÃO/Coalizões/R/PNUD/PNUD.png" width="300"/> </a>
+:::
+
+Após baixar o arquivo, é só importar a base de dados com o seguinte comando:
+
+```{r dados_IDH}
+
+HDR2025 <- read_csv("HDR25_Composite_indices_complete_time_series.csv")
+```
+
+```{r include = FALSE}
+colnames(HDR2025)
+```
+
+Quanto ao Gini, importamos os dados usando o API do Banco Mundial. Para tanto, é necessário instalar o pacote "WDI" e depois executá-lo:
+
+```{r eval=FALSE}
+install.packages("WDI")
+library(WDI)
+```
+
+Caso prefira acessar os dados diretamente do site, clique na imagem abaixo:
+
+::: {style="text-align: center;"}
+<a href="https://data.worldbank.org/indicator/SI.POV.GINI?end=2023&start=1963&view=chart"> <img src="https://data.worldbank.org/assets/images/logo-wb-header-en.svg"/> </a>
+:::
+
+## Tratamento dos dados
+
+Após baixar os dados, faz-se necessário realizar seu tratamento. No entanto, para deixar o texto corrente mais "limpo", preferimos deixar os comandos de tratamento no Apêndice, localizado no final deste trabalho.
+
+```{r echo = FALSE, include=FALSE}
+
+# IDH
+idh_brasil <- HDR2025 %>% 
+  select(-c(iso3,hdicode, region,hdi_rank_2023,"le_1990":"pop_total_2023")) %>% 
+  pivot_longer(
+    -country, names_to = "Ano", values_to = "IDH") %>% 
+  filter(country %in% c("Brazil")) %>% 
+  mutate(country = recode(country, "Brazil" = "Brasil"))
+
+idh_brasil$Ano <- parse_number(idh_brasil$Ano)
+
+# Gini
+vars_cods <- WDI::WDIsearch(string = "gini")
+
+gini_brasil <- WDI::WDI(
+   country   = c("BR"),
+   indicator = "SI.POV.GINI",
+   start     = 1990,
+   end       = 2022
+) %>%
+  mutate(country = recode(country,
+                          "Brazil" = "Brasil"),
+         Gini = SI.POV.GINI,
+         Ano = year,
+         .keep = "none")
+
+gini_brasil$Ano <- as.numeric(gini_brasil$Ano)
+
+gini_brasil$Gini <- str_remove(gini_brasil$Gini, " - .*") %>% 
+  as.numeric(gini_brasil$Gini)
+  
+
+
+colnames(gini_brasil)
+glimpse(gini_brasil)
+
+# Unificando
+HDR_Gini <- full_join(idh_brasil, gini_brasil, by = c("country", "Ano"))
+glimpse(HDR_Gini)
+
+names(HDR_Gini)
+
+# Unificado + longer
+HDR_Gini_longer <- HDR_Gini %>% 
+  pivot_longer(cols = c(IDH,Gini), names_to = "variavel", values_to = "valor")
+
+# IDHAD
+idhad_brasil <- HDR2025 %>%
+  select(c(country,"ihdi_2010":"ihdi_2023")) %>% 
+  pivot_longer(
+    -country, names_to = "Ano", values_to = "IDHAD"
+  ) %>%
+  filter(country %in% c("Brazil")) %>%
+  mutate(country = recode(country, "Brazil" = "Brasil"))
+
+idhad_brasil$Ano <- parse_number(idhad_brasil$Ano)
+
+
+```
+
+# Analisando o caso brasileiro
+
+A “Nova República” brasileira (1985 -) se inicia após vinte anos de regime civil-militar. Seu momento fundacional foi a Assembleia Constituinte, que promulgou a Constituição de 1988, cujo teor fortemente social e democrático rendeu-lhe a alcunha de “Constituição Cidadã”. A prevalência de grupos progressistas em diversos temas nos trabalhos constituintes permitiu que direitos importantes fossem incluídos na Carta, como a universalização da saúde, o direito à assistência social em direito e incentivos para processos de participação social [^3].
+
+[^3]: AVRITZER, L. Os Impasses da Democracia no Brasil. 3. ed. Rio de Janeiro: Civilização Brasileira, 2016.
+
+A nova democracia ainda passaria por um período conturbado marcado pela hiperinflação (herdada pelo regime autoritário), por demonstrações do poder de facto dos militares durante o processo constituinte – que se valeram de ameaças e lobby para manter sua autonomia perante os civis [^4] – e pelo impeachment do presidente Fernando Collor de Mello em 1992.
+
+[^4]: LINZ, J.; STEPAN, A. A transição e consolidação da democracia: A experiência do sul da Europa e da América do Sul. São Paulo: Paz e Terra, 1999.
+
+Apesar das turbulências que marcaram o começo da redemocratização, houve avanços nos indicadores socioeconômicos do Brasil nesse período, graças, em parte, às garantias básicas fornecidas pela Constituição de 1988. Segundo o Programa das Nações Unidas para o Desenvolvimento (PNUD), o Índice de Desenvolvimento Humano (IDH) saltou de 0.610 em 1990 para 0.630 em 1993.
+
+Já o Gini do país, nesse período entre 1990 e 1993, passou por oscilações, caindo em 1992 e subindo novamente em 1993.
+
+```{r echo = FALSE}
+HDR_Gini %>% select(-country) %>% 
+  filter(Ano >= 1990, Ano <= 1993) %>% gt() %>%
+  tab_options(column_labels.border.top.color = 
+                "black", column_labels.border.top.width = 
+                px(3)) %>% 
+  cols_align(align = "center") %>% 
+  tab_header("IDH e Gini do Brasil (1990-1993") %>% 
+  tab_style(style = list(
+    cell_fill(color = "blue"),
+    cell_text(color = "white")
+  ),
+  locations = cells_title(groups = "title"))
+```
+
+A partir de 1994, parecia que o sistema político brasileiro conseguiria se estabilizar. As coalizões políticas lideradas pelo Partido dos Trabalhadores (PT) e pelo Partido da Social Democracia Brasileira (PSDB) protagonizaram e estabilizaram a disputa política dentro dos limites das “grades de proteção” da democracia [^5].
+
+[^5]: LEVITSKY, S.; ZIBLATT, D. Como as Democracias Morrem. 1. ed. Rio de Janeiro: Zahar, 2018. Segundo os autores, além das regras formais (como a Constituição), é necessário que certas "regras informais sejam seguidas para garantir o bem-estar da democracia. Tais regras são chamadas pelos autores de "grades de proteção da democracia" e são a tolerância mútua (ou seja, o reconhecimento dos adversários como legítimos, em vez de tratá-los como inimigos) e a reserva institucional (autorrestrição no uso da “letra seca da lei” para evitar violar seu espírito e comprometer o sistema).
+
+No plano social, o IDH brasileiro continuou em ascensão nesse período: de 0,63 em 1993 até 0,75 em 2014. Por sua vez, o coeficiente de Gini do país caiu de 60.1 em 1993 para 52 em 2014, em um movimento de queda contínua com pequenos intervalos de subida em apenas dois anos (1996 e 2012)
+
+```{r echo = FALSE, fig.align='center'}
+HDR_Gini_longer %>% filter(Ano >= 1993, Ano <= 2014) %>%
+  ggplot(aes(x = Ano, y = valor, color = variavel)) +
+  geom_line(size = 1) + 
+  facet_wrap(facets = ~variavel, scales = "free") +
+  scale_color_ordinal() +
+  labs(title = "Dados socioeconômicos do Brasil (1993-2014)",
+       y = NULL,
+       caption = "Fonte: PNUD e Banco Mundial. Elaboração: Dados sistematizados pelo autor. R package: ggplot2") +
+   theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"))
+  
+```
+
+Tal período de estabilidade provocou uma importante redução da desigualdade social. O gráfico mostra a queda do Gini nos Governos FHC (PSDB) e Lula (PT), sendo ela um pouco mais proeminente no governo petista.
+
+```{r echo = FALSE, fig.align = 'center'}
+gini_brasil %>% filter(Ano >= 1994, Ano <= 2011) %>%
+  ggplot(aes(x = Ano,
+             y = Gini)) +
+  geom_line(size = 1) +
+  geom_rect(xmin = 1994,
+            xmax = 2003,
+            ymin = -Inf,
+            ymax = Inf,
+            alpha = 0.008, fill = "darkblue") +
+  geom_rect(xmin = 2003,
+            xmax = 2011,
+            ymin = -Inf,
+            ymax = Inf,
+            alpha = 0.008, fill = "darkred") +
+  geom_vline(xintercept = 2003, linetype = "dashed") +
+  annotate("text", x = 1999, y = 56, label = "Governo FHC", color = "blue") +
+  annotate("text", x = 2007, y = 57, label = "Governo Lula", color = "red") +
+  labs(title = "Coeficiente de Gini - Brasil (1993-2011)",
+       y = NULL,
+       caption = "Fonte: PNUD e Banco Mundial. Elaboração: Dados sistematizados pelo autor. R package: ggplot2") +
+   theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"))
+```
+
+O gráfico abaixo mostra essa mesma queda ao ajustar a escala para o padrão (de 0 a 100)
+
+```{r echo = FALSE, fig.align = 'center'}
+gini_brasil %>% filter(Ano >= 1994, Ano <= 2011) %>%
+  ggplot(aes(x = Ano,
+             y = Gini)) +
+  geom_line(size = 1) +
+  ylim(0,100) +
+  geom_rect(xmin = 1994,
+            xmax = 2003,
+            ymin = -Inf,
+            ymax = Inf,
+            alpha = 0.008, fill = "darkblue") +
+  geom_rect(xmin = 2003,
+            xmax = 2011,
+            ymin = -Inf,
+            ymax = Inf,
+            alpha = 0.008, fill = "darkred") +
+  geom_vline(xintercept = 2003, linetype = "dashed") +
+  annotate("text", x = 1999, y = 56, label = "Governo FHC", color = "blue") +
+  annotate("text", x = 2007, y = 60, label = "Governo Lula", color = "red") +
+  labs(title = "Coeficiente de Gini - Brasil (1993-2011) - padron.",
+       y = NULL,
+       caption = "Fonte: Banco Mundial. Elaboração: Dados sistematizados pelo autor. R package: ggplot2") +
+   theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"))
+```
+
+O processo continuou no primeiro mandato de Dilma Rousseff (2011-2015).
+
+```{r echo = FALSE, fig.align = 'center'}
+gini_brasil %>% filter(Ano >= 1994, Ano <= 2015) %>%
+  ggplot(aes(x = Ano,
+             y = Gini)) +
+  geom_line(size = 1) +
+  ylim(0,100) +
+  geom_rect(xmin = 1994,
+            xmax = 2003,
+            ymin = -Inf,
+            ymax = Inf,
+            alpha = 0.008, fill = "darkblue") +
+  geom_rect(xmin = 2003,
+            xmax = 2015,
+            ymin = -Inf,
+            ymax = Inf,
+            alpha = 0.008, fill = "darkred") +
+  geom_vline(xintercept = c(2003, 2011), linetype = "dashed") +
+  annotate("text", x = 1999, y = 56, label = "Governo FHC", color = "blue") +
+  annotate("text", x = 2007, y = 60, label = "Governo Lula", color = "red") +
+  annotate("text", x = 2013, y = 60, label = "Governo Dilma", color = "red") +
+  labs(title = "Coeficiente de Gini - Brasil (1993-2015) - padron.",
+       y = NULL,
+       caption = "Fonte: Banco Mundial. Elaboração: Dados sistematizados pelo autor. R package: ggplot2") +
+   theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"))
+```
+
+A partir de 2015, o país conheceu um forte momento de instabilidade, com crises econômicas e política [^6]. No entanto, mesmo em um ambiente adverso, os efeitos da Constituição de 1988 continuaram em vigor. No caso do IDH, o Brasil manteve a tendência de crescimento, realidade presente desde o início da série histórica do indicador (1990). Essa subida significativa foi interrompida apenas por pequenos momentos de queda. A oscilação negativa mais forte ocorre durante o Governo Bolsonaro, seguida por uma recuperação no fim de seu governo.
+
+[^6]: A crise econômica que se devia tanto à conjuntura internacional quanto às decisões erráticas da presidente Dilma Rousseff. No âmbito político, a instabilidade foi gerada e intensificada pela recusa do resultado eleitoral por parte do candidato perdedor das eleições de 2014, o impeachment controverso de Dilma, os excessos da Operação Lava-Jato e a consequente eleição do outsider da direita radical Jair Bolsonaro em 2018.
+
+Observe a trajetória do IDH em todos os governos pós-democratização.
+
+```{r echo = FALSE, fig.align = 'center'}
+idh_brasil %>%
+  ggplot(aes(x = Ano,
+             y = IDH)) +
+  geom_line(size = 1) +
+  geom_rect(xmin = 1990,
+            xmax = 1993,
+            ymin = -Inf,
+            ymax = Inf,
+            alpha = 0.008, fill = "darkgreen") +
+  geom_rect(xmin = 1995,
+            xmax = 2003,
+            ymin = -Inf,
+            ymax = Inf,
+            alpha = 0.008, fill = "darkblue") +
+  geom_rect(xmin = 2003,
+            xmax = 2011,
+            ymin = -Inf,
+            ymax = Inf,
+            alpha = 0.008, fill = "red") +
+  geom_rect(xmin = 2011,
+            xmax = 2016,
+            ymin = -Inf,
+            ymax = Inf,
+            alpha = 0.008, fill = "darkred") +
+  geom_rect(xmin = 2019,
+            xmax = 2023,
+            ymin = -Inf,
+            ymax = Inf,
+            alpha = 0.008, fill = "green") +
+  annotate("text", x = 1992, y = 0.641, label = "Collor", color = "darkgreen") +
+  annotate("text", x = 1994, y = 0.666, label = "Itamar") +
+  annotate("text", x = 1998, y = 0.718, label = "FHC", color = "blue") +
+  annotate("text", x = 2007, y = 0.753, label = "Lula", color = "red") +
+  annotate("text", x = 2013, y = 0.753, label = "Dilma", color = "darkred") +
+  annotate("text", x = 2017, y = 0.753, label = "Temer") +
+  annotate("text", x = 2020, y = 0.740, label = "Bolsonaro", color = "darkgreen") +
+  labs(title = "IDH - Brasil (1990-2023)",
+       caption = "Fonte: PNUD. Elaboração: Dados sistematizados pelo autor. R package: ggplot2") +
+   theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"))
+```
+
+O coeficiente de Gini brasileiro, por sua vez, passa por algumas oscilações, passando, inclusive, por algum retorno à desigualdade. Um caso curioso é o do Governo Bolsonaro, no qual ocorreu uma queda vertiginosa em 2020 e um forte retorno em 2021 para voltar a cair em 2022. Tais efeitos de queda pode ter relação com as políticas de distribuição de renda durante o período de pandemia e no ano eleitoral.
+
+```{r echo = FALSE, fig.align = 'center'}
+gini_brasil %>%
+  ggplot(aes(x = Ano,
+             y = Gini)) +
+  geom_line(size = 1) +
+  geom_rect(xmin = 1990,
+            xmax = 1993,
+            ymin = -Inf,
+            ymax = Inf,
+            alpha = 0.008, fill = "darkgreen") +
+  geom_rect(xmin = 1995,
+            xmax = 2003,
+            ymin = -Inf,
+            ymax = Inf,
+            alpha = 0.008, fill = "darkblue") +
+  geom_rect(xmin = 2003,
+            xmax = 2011,
+            ymin = -Inf,
+            ymax = Inf,
+            alpha = 0.008, fill = "red") +
+  geom_rect(xmin = 2011,
+            xmax = 2016,
+            ymin = -Inf,
+            ymax = Inf,
+            alpha = 0.008, fill = "darkred") +
+  geom_rect(xmin = 2019,
+            xmax = 2023,
+            ymin = -Inf,
+            ymax = Inf,
+            alpha = 0.008, fill = "green") +
+  annotate("text", x = 1992, y = 51, label = "Collor", color = "darkgreen") +
+  annotate("text", x = 1994, y = 54, label = "Itamar") +
+  annotate("text", x = 1998, y = 58, label = "FHC", color = "blue") +
+  annotate("text", x = 2007, y = 58, label = "Lula", color = "red") +
+  annotate("text", x = 2013, y = 56, label = "Dilma", color = "darkred") +
+  annotate("text", x = 2017, y = 58, label = "Temer") +
+  annotate("text", x = 2020, y = 55, label = "Bolsonaro", color = "darkgreen") +
+  labs(title = "Gini - Brasil (1990-2022)",
+       caption = "Fonte: Banco Mundial. Elaboração: Dados sistematizados pelo autor. R package: ggplot2") +
+   theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"))
+```
+
+Observe os gráficos dos dois indicadores, lado a lado, com as pontuações padronizadas:
+
+```{r echo = FALSE, fig.align = 'center'}
+g1 <- idh_brasil %>%
+  ggplot(aes(x = Ano,
+             y = IDH)) +
+  geom_line(size = 1) +
+  ylim(0,1) +
+  geom_rect(xmin = 1990,
+            xmax = 1993,
+            ymin = -Inf,
+            ymax = Inf,
+            alpha = 0.008, fill = "darkgreen") +
+  geom_rect(xmin = 1995,
+            xmax = 2003,
+            ymin = -Inf,
+            ymax = Inf,
+            alpha = 0.008, fill = "darkblue") +
+  geom_rect(xmin = 2003,
+            xmax = 2011,
+            ymin = -Inf,
+            ymax = Inf,
+            alpha = 0.008, fill = "red") +
+  geom_rect(xmin = 2011,
+            xmax = 2016,
+            ymin = -Inf,
+            ymax = Inf,
+            alpha = 0.008, fill = "darkred") +
+  geom_rect(xmin = 2019,
+            xmax = 2023,
+            ymin = -Inf,
+            ymax = Inf,
+            alpha = 0.008, fill = "green") +
+  annotate("text", x = 1992, y = 0.580, label = "Collor", color = "darkgreen") +
+  annotate("text", x = 1994, y = 0.620, label = "Itamar") +
+  annotate("text", x = 1998, y = 0.718, label = "FHC", color = "blue") +
+  annotate("text", x = 2007, y = 0.753, label = "Lula", color = "red") +
+  annotate("text", x = 2013, y = 0.730, label = "Dilma", color = "darkred") +
+  annotate("text", x = 2017, y = 0.799, label = "Temer") +
+  annotate("text", x = 2020, y = 0.753, label = "Bolsonaro", color = "darkgreen") +
+  labs(title = "IDH - Brasil (1990-2023)") +
+   theme(
+    plot.title = element_text(hjust = 0.5, size = 12, face = "bold"))
+
+
+g2 <- gini_brasil %>%
+  ggplot(aes(x = Ano,
+             y = Gini)) +
+  geom_line(size = 1) +
+  geom_rect(xmin = 1990,
+            xmax = 1993,
+            ymin = -Inf,
+            ymax = Inf,
+            alpha = 0.008, fill = "darkgreen") +
+  geom_rect(xmin = 1995,
+            xmax = 2003,
+            ymin = -Inf,
+            ymax = Inf,
+            alpha = 0.008, fill = "darkblue") +
+  geom_rect(xmin = 2003,
+            xmax = 2011,
+            ymin = -Inf,
+            ymax = Inf,
+            alpha = 0.008, fill = "red") +
+  geom_rect(xmin = 2011,
+            xmax = 2016,
+            ymin = -Inf,
+            ymax = Inf,
+            alpha = 0.008, fill = "darkred") +
+  geom_rect(xmin = 2019,
+            xmax = 2023,
+            ymin = -Inf,
+            ymax = Inf,
+            alpha = 0.008, fill = "green") +
+  annotate("text", x = 1992, y = 51, label = "Collor", color = "darkgreen") +
+  annotate("text", x = 1994, y = 54, label = "Itamar") +
+  annotate("text", x = 1998, y = 58, label = "FHC", color = "blue") +
+  annotate("text", x = 2007, y = 58, label = "Lula", color = "red") +
+  annotate("text", x = 2013, y = 56, label = "Dilma", color = "darkred") +
+  annotate("text", x = 2017, y = 58, label = "Temer") +
+  annotate("text", x = 2020, y = 55, label = "Bolsonaro", color = "darkgreen") +
+  labs(title = "Gini - Brasil (1990-2022)",
+       caption = "Fonte: Banco Mundial. Elaboração: Dados sistematizados pelo autor. R package: ggplot2") +
+   theme(
+    plot.title = element_text(hjust = 0.5, size = 12, face = "bold"))
+
+
+g1+g2
+```
+
+No entanto, é importante trazer os dados do Índice de Desenvolvimento Humano Ajustado à Desigualdade (IDHAD), que possui dados a partir de 2010. Comparando com o IDH, observe que ao incluir o elemento da desigualdade (nas três dimensões que compõem o IDH, ou seja, saúde, educação e renda), o desempenho do Brasil em termos de qualidade de vida cai.
+
+```{r echo=FALSE, fig.align='center'}
+
+
+full_join(idh_brasil, idhad_brasil, by = c("country", "Ano")) %>%
+  filter(Ano >= 2010) %>%
+  pivot_longer(cols = c(IDH, IDHAD), names_to = "variavel", values_to = "valor") %>% 
+  ggplot(aes(x = Ano,
+             y = valor,
+             color = variavel)) +
+  geom_line(size = 1) +
+  labs(color = "Variáveis",
+       linetypes = "Variáveis",
+       title = "IDH e IDHAH - Brasil (2010-2023)",
+       caption = "Fonte: PNUD. Elaboração: Dados sistematizados pelo autor. R package: ggplot2") +
+  scale_color_manual(
+    values = c("IDH" = "blue", "IDHAD" = "darkgreen")
+  ) +
+  theme(legend.position = "bottom", 
+        plot.title = element_text(hjust = 0.5, size = 16, face = "bold"))
+
+```
+
+Assim, vimos que o Brasil, desde 1990, passou por um constante crescimento do IDH. Isso se deve, entre outros fatores, às políticas sociais da COnstituição de 1988. Já o Gini mostrou oscilações no decorrer do tempo (dependendo das ações de cada governo), embora em uma tendência geral de queda. Por fim, vimos pelo IDHAD que a qualidade de vida do Brasil realmente melhorou, mas, ao acrescentar o fator da desigualdade, esse desempenho se mostra mais tímido e, inclusive, com momentos de oscilação negativa.
+
+# Apêndice
+
+Para o presente trabalho, nós realizamos o tratamento dos dados de forma a gerar 4 bases: 1) os dados do IDH filtrados e manipulados; 2) os dados do Gini filtrados e manipulados; 3) os dados do IDH e do Gini de Brasil e Venezuela unificados; 4) os mesmos dados da base 3 em formato "longer"; 5) os dados do IDHAD.
+
+```{r eval = FALSE}
+
+# IDH
+idh_brasil <- HDR2025 %>% 
+  select(-c(iso3,hdicode, region,hdi_rank_2023,"le_1990":"pop_total_2023")) %>% 
+  pivot_longer(
+    -country, names_to = "Ano", values_to = "IDH") %>% 
+  filter(country %in% c("Brazil")) %>% 
+  mutate(country = recode(country, "Brazil" = "Brasil"))
+
+idh_brasil$Ano <- parse_number(idh_brasil$Ano)
+
+# Gini
+vars_cods <- WDI::WDIsearch(string = "gini")
+
+gini_brasil <- WDI::WDI(
+   country   = c("BR"),
+   indicator = "SI.POV.GINI",
+   start     = 1990,
+   end       = 2022
+) %>%
+  mutate(country = recode(country,
+                          "Brazil" = "Brasil"),
+         Gini = SI.POV.GINI,
+         Ano = year,
+         .keep = "none")
+
+gini_brasil$Ano <- as.numeric(gini_brasil$Ano)
+
+gini_brasil$Gini <- str_remove(gini_brasil$Gini, " - .*") %>% 
+  as.numeric(gini_brasil$Gini)
+
+# Unificando
+HDR_Gini <- full_join(idh_brasil, gini_brasil, by = c("country", "Ano"))
+
+# Unificado + longer
+HDR_Gini_longer <- HDR_Gini %>% 
+  pivot_longer(cols = c(IDH,Gini), names_to = "variavel", values_to = "valor")
+
+# IDHAD
+idhad_brasil <- HDR2025 %>%
+  select(c(country,"ihdi_2010":"ihdi_2023")) %>% 
+  pivot_longer(
+    -country, names_to = "Ano", values_to = "IDHAD"
+  ) %>%
+  filter(country %in% c("Brazil")) %>%
+  mutate(country = recode(country, "Brazil" = "Brasil"))
+
+idhad_brasil$Ano <- parse_number(idhad_brasil$Ano)
+
+
+```
+
+# Notas
