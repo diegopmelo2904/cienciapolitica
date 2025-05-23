@@ -49,7 +49,7 @@ options(scipen = 999)
 Agora que temos nossos dados devidamente importados, podemos carregar os dados que usaremos em nossa apresentação. No caso dos dados do PNUD, o arquivo foi baixado do site da organização, que pode ser acessado clicando na imagem abaixo:
 
 ::: {style="text-align: center;"}
-<a href="https://hdr.undp.org/data-center/documentation-and-downloads"> <img src="C:/Users/DIEGO PRATA/OneDrive/Área de Trabalho/CURSOS/MESTRADO DOUTORADO/DISSERTAÇÃO/Coalizões/R/PNUD/PNUD.png" width="300"/> </a>
+<a href="https://hdr.undp.org/data-center/documentation-and-downloads"> <img src="https://hdr.undp.org/themes/custom/hdro/logo.svg"/> </a>
 :::
 
 Após baixar o arquivo, é só importar a base de dados com o seguinte comando:
