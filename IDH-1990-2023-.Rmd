@@ -491,7 +491,7 @@ Assim, vimos que o Brasil, desde 1990, passou por um constante crescimento do ID
 
 # Apêndice
 
-Para o presente trabalho, nós realizamos o tratamento dos dados de forma a gerar 4 bases: 1) os dados do IDH filtrados e manipulados; 2) os dados do Gini filtrados e manipulados; 3) os dados do IDH e do Gini de Brasil e Venezuela unificados; 4) os mesmos dados da base 3 em formato "longer"; 5) os dados do IDHAD.
+Para o presente trabalho, nós realizamos o tratamento dos dados de forma a gerar 4 bases: 1) os dados do IDH filtrados e manipulados; 2) os dados do Gini filtrados e manipulados; 3) os dados do IDH e do Gini unificados; 4) os mesmos dados da base 3 em formato "longer"; 5) os dados do IDHAD.
 
 ```{r eval = FALSE}
 
