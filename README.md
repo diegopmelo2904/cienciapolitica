@@ -1,2 +1,2 @@
-# cienciapolitica
-Projetos na área de Ciência Política e afins
+# IDH e Gini
+Dados sobre a qualidade de vida e desigualdade social no Brasil
